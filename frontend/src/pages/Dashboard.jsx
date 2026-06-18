@@ -20,12 +20,14 @@ import {
   ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import { getDashboardData } from '../services/dashboardService';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState({
@@ -56,14 +58,45 @@ const Dashboard = () => {
       const membersRes = await api.get('/members/members/');
       const allMembers = membersRes.data || [];
       
-      // Count by status
-      const deceasedCount = allMembers.filter(m => m.status === 'deceased').length;
-      const closedCount = allMembers.filter(m => m.status === 'closed').length;
+      // Get current user's member ID to filter out
+      const currentUserId = user?.id || user?.member?.id;
+      
+      // Filter out current user from all members
+      const otherMembers = allMembers.filter(m => m.id !== currentUserId);
+      
+      // Count by status (excluding current user)
+      const totalMembers = otherMembers.length;
+      
+      // Deceased members: status is 'deceased' or is_active is false
+      const deceasedMembers = otherMembers.filter(m => 
+        m.status === 'deceased' || m.is_active === false
+      ).length;
+      
+      // Closed members: status is 'closed'
+      const closedMembers = otherMembers.filter(m => 
+        m.status === 'closed'
+      ).length;
+      
+      // Active members = Total - Deceased - Closed
+      const activeMembers = totalMembers - deceasedMembers - closedMembers;
+      
+      console.log('📊 Dashboard member counts:', {
+        totalMembers,
+        activeMembers,
+        deceasedMembers,
+        closedMembers,
+        calculation: `${totalMembers} - ${deceasedMembers} - ${closedMembers} = ${activeMembers}`,
+        allMembers: allMembers.length,
+        currentUserId,
+        otherMembers: otherMembers.length
+      });
       
       setDashboardData({
         ...data,
-        deceasedMembers: deceasedCount,
-        closedMembers: closedCount,
+        totalMembers: totalMembers,
+        activeMembers: activeMembers,
+        deceasedMembers: deceasedMembers,
+        closedMembers: closedMembers,
       });
       setLastUpdated(new Date());
     } catch (error) {
@@ -98,12 +131,7 @@ const Dashboard = () => {
     }).format(amount || 0);
   };
 
-  // Engagement rate
-  const engagementRate = dashboardData.totalMembers > 0 
-    ? Math.round((dashboardData.activeMembers / dashboardData.totalMembers) * 100) 
-    : 0;
-
-  // Financial Summary Cards
+  // Financial Summary Cards - Only Total Balance
   const financialCards = [
     {
       id: 'balance',
@@ -116,20 +144,9 @@ const Dashboard = () => {
       text: 'text-indigo-600',
       description: 'Net balance across all members',
     },
-    {
-      id: 'kodukkan',
-      title: 'Kodukkan',
-      value: formatCurrency(dashboardData.totalKodukkan),
-      icon: CalculatorIcon,
-      color: 'from-amber-500 to-orange-500',
-      bg: 'bg-amber-50',
-      border: 'border-amber-200',
-      text: 'text-amber-600',
-      description: 'Total amount to be paid',
-    },
   ];
 
-  // Member stats with real counts
+  // Member stats with real counts (excluding current user)
   const memberStats = [
     {
       id: 'total',
@@ -259,8 +276,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Financial Summary - 2 Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Financial Summary - Only 1 Card (Total Balance) */}
+      <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
         {financialCards.map((card) => {
           const Icon = card.icon;
           return (

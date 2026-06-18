@@ -1,41 +1,42 @@
+
 import api from './api';
 
 export const getDashboardData = async () => {
     try {
         console.log('📊 Fetching dashboard data...');
         
-        const membersRes = await api.get('/members/members/');
+        // ✅ OPTIMIZED: Fetch members and transactions in parallel (2 calls total)
+        const [membersRes, transactionsRes] = await Promise.all([
+            api.get('/members/members/'),
+            api.get('/members/transactions/')
+        ]);
+        
         const members = membersRes.data || [];
+        const allTransactions = transactionsRes.data || [];
+        
         console.log('📥 Members fetched:', members.length);
+        console.log('📥 Transactions fetched:', allTransactions.length);
 
         let totalKittuvan = 0;
         let totalKodukkan = 0;
         let totalPayat = 0;
         let totalIppolPayattiyath = 0;
         let totalBakki = 0;
-        let activeMembers = 0;
-        let totalMembers = members.length;
-        let totalTransactions = 0;
+        let totalTransactions = allTransactions.length;
+        let membersWithTransactions = 0;
 
-        for (const member of members) {
-            try {
-                const transRes = await api.get(`/members/members/${member.id}/transactions/`);
-                const transactions = transRes.data || [];
-                totalTransactions += transactions.length;
-                
-                if (transactions && transactions.length > 0) {
-                    const latestTransaction = transactions[0];
-                    totalKittuvan += parseFloat(latestTransaction.kittuvan) || 0;
-                    totalKodukkan += parseFloat(latestTransaction.kodukkan) || 0;
-                    totalPayat += parseFloat(latestTransaction.payat) || 0;
-                    totalIppolPayattiyath += parseFloat(latestTransaction.ippol_payattiyath) || 0;
-                    totalBakki += parseFloat(latestTransaction.bakki_kittan) || 0;
-                    activeMembers++;
-                }
-            } catch (error) {
-                console.log(`ℹ️ No transactions for member: ${member.name}`);
-            }
+        // ✅ Process all transactions in JavaScript (no more API calls!)
+        for (const transaction of allTransactions) {
+            totalKittuvan += parseFloat(transaction.kittuvan) || 0;
+            totalKodukkan += parseFloat(transaction.kodukkan) || 0;
+            totalPayat += parseFloat(transaction.payat) || 0;
+            totalIppolPayattiyath += parseFloat(transaction.ippol_payattiyath) || 0;
+            totalBakki += parseFloat(transaction.bakki_kittan) || 0;
         }
+
+        // Count members who have transactions
+        const memberIdsWithTransactions = new Set(allTransactions.map(t => t.member));
+        membersWithTransactions = memberIdsWithTransactions.size;
 
         return {
             totalKittuvan: parseFloat(totalKittuvan.toFixed(2)),
@@ -43,11 +44,11 @@ export const getDashboardData = async () => {
             totalPayat: parseFloat(totalPayat.toFixed(2)),
             totalIppolPayattiyath: parseFloat(totalIppolPayattiyath.toFixed(2)),
             totalBakki: parseFloat(totalBakki.toFixed(2)),
-            activeMembers,
-            totalMembers,
-            totalTransactions,
+            activeMembers: membersWithTransactions,
+            totalMembers: members.length,
+            totalTransactions: totalTransactions,
         };
-        
+
     } catch (error) {
         console.error('❌ Error fetching dashboard data:', error);
         return {

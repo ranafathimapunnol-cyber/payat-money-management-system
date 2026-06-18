@@ -1,4 +1,3 @@
-# accounts/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile
@@ -30,21 +29,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        # Remove fields that aren't on User model
         name = validated_data.pop('name')
         phone = validated_data.pop('phone')
         password = validated_data.pop('password')
         password2 = validated_data.pop('password2')
-        
-        # Create user
+
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=password,
             first_name=name
         )
-        
-        # Create Member
+
         member = Member.objects.create(
             user=user,
             name=name,
@@ -52,28 +48,23 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             is_active=True
         )
-        
-        # Create UserProfile
+
         UserProfile.objects.create(
             user=user,
             member=member,
             phone_verified=False
         )
-        
+
         return user
+
 
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
     name = serializers.CharField(source='member.name')
     phone = serializers.CharField(source='member.phone')
-    address = serializers.CharField(source='member.address', allow_null=True, allow_blank=True)
-    profile_pic = serializers.ImageField(source='member.profile_pic', allow_null=True, required=False)
-    phone_verified = serializers.BooleanField(read_only=True)
+    address = serializers.CharField(source='member.address', allow_blank=True, allow_null=True)
 
     class Meta:
         model = UserProfile
-        fields = [
-            'id', 'username', 'email', 'name', 'phone', 
-            'address', 'profile_pic', 'phone_verified'
-        ]
+        fields = ['id', 'username', 'email', 'name', 'phone', 'address', 'phone_verified']

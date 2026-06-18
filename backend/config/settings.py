@@ -140,3 +140,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Prevent "too many clients" error
+DATABASES['default']['CONN_MAX_AGE'] = 0  # Close connections after each request
+DATABASES['default']['CONN_HEALTH_CHECKS'] = True
