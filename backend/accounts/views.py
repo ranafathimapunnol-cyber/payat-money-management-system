@@ -1,89 +1,145 @@
-from rest_framework import status, generics, permissions
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
-from .serializers import RegisterSerializer, UserProfileSerializer
 from .models import UserProfile
 from members.models import Member
 from .utils import generate_otp, send_otp
-import traceback
+import random
+import os
 
-# ==================== REGISTER VIEW ====================
-class RegisterView(generics.CreateAPIView):
-    """
-    Register a new user with OTP verification
-    """
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def create(self, request, *args, **kwargs):
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
         try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            user = serializer.save()
+            print("📝 Registration attempt:", request.data.get('username'))
             
-            profile = UserProfile.objects.get(user=user)
-            otp = generate_otp()
-            success, method = send_otp(
-                profile.member.phone,
-                profile.member.email,
-                otp,
-                profile.member.name
+            username = request.data.get('username')
+            email = request.data.get('email')
+            password = request.data.get('password')
+            password2 = request.data.get('password2')
+            name = request.data.get('name', username)
+            phone = request.data.get('phone', '')
+            
+            if not username or not email or not password:
+                return Response({
+                    'error': 'Username, email and password are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if password != password2:
+                return Response({
+                    'error': 'Passwords do not match'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if User.objects.filter(username=username).exists():
+                return Response({
+                    'error': 'Username already taken'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if User.objects.filter(email=email).exists():
+                return Response({
+                    'error': 'Email already registered'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=name
             )
+            print(f"✅ User created: {user.username}")
+            
+            member = Member.objects.create(
+                user=user,
+                name=name,
+                phone=phone,
+                email=email,
+                is_active=True,
+                status='active'
+            )
+            print(f"✅ Member created: {member.name}")
+            
+            profile = UserProfile.objects.create(
+                user=user,
+                member=member,
+                phone_verified=False
+            )
+            print(f"✅ Profile created")
+            
+            otp = generate_otp()
+            print(f"🔑 OTP for {username}: {otp}")
+            
+            # Try to send email, fallback to console
+            try:
+                success, method = send_otp(phone, email, otp, name)
+                print(f"📧 OTP sent via {method}: {success}")
+            except Exception as e:
+                print(f"⚠️ Email error (but continuing): {e}")
             
             profile.otp_code = otp
             profile.otp_created_at = timezone.now()
             profile.otp_attempts = 0
             profile.save()
-
+            
             return Response({
-                'message': 'Registration successful! Please verify your email.',
+                'message': 'Registration successful! Check your email for OTP.',
                 'user': {
                     'username': user.username,
                     'email': user.email,
-                    'name': user.first_name,
-                    'phone': profile.member.phone,
+                    'name': member.name,
+                    'phone': member.phone,
                 },
-                'otp_sent': success,
-                'method_used': method,
                 'debug_otp': otp,
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            if 'user' in locals():
-                user.delete()
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            print("❌ Error:", str(e))
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ==================== VERIFY OTP VIEW ====================
 class VerifyOTPView(APIView):
-    """
-    Verify user's OTP and login
-    """
-    permission_classes = [permissions.AllowAny]
-
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         try:
             email = request.data.get('email')
-            phone = request.data.get('phone')
             otp = request.data.get('otp')
-
+            
             if not otp:
                 return Response({'error': 'OTP is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-            member = self._get_member(email, phone)
-            if not member:
+            
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
                 return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-            profile = UserProfile.objects.get(member=member)
-
+            
+            profile = UserProfile.objects.get(user=user)
+            
             if profile.phone_verified:
-                return self._login_response(profile.user, 'Email already verified!')
-
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'message': 'Already verified!',
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'name': user.first_name,
+                        'phone_verified': True,
+                    }
+                }, status=status.HTTP_200_OK)
+            
             if profile.otp_code != otp:
                 profile.otp_attempts += 1
                 profile.save()
@@ -91,147 +147,83 @@ class VerifyOTPView(APIView):
                 return Response({
                     'error': f'Invalid OTP. {remaining} attempts remaining.'
                 }, status=status.HTTP_400_BAD_REQUEST)
-
+            
             if profile.otp_created_at and (timezone.now() - profile.otp_created_at) > timedelta(minutes=5):
-                return Response({'error': 'OTP has expired'}, status=status.HTTP_400_BAD_REQUEST)
-
+                return Response({'error': 'OTP expired'}, status=status.HTTP_400_BAD_REQUEST)
+            
             profile.phone_verified = True
             profile.otp_code = None
             profile.otp_created_at = None
             profile.otp_attempts = 0
             profile.save()
-
-            return self._login_response(profile.user, 'Email verified successfully! 🎉')
-
-        except Member.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        except UserProfile.DoesNotExist:
-            return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'message': 'Email verified! 🎉',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'name': user.first_name,
+                    'phone_verified': True,
+                }
+            }, status=status.HTTP_200_OK)
+            
         except Exception as e:
-            traceback.print_exc()
+            print("❌ Verify Error:", str(e))
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _get_member(self, email, phone):
-        """Helper to find member by email or phone"""
-        if email:
-            try:
-                return Member.objects.get(email=email)
-            except Member.DoesNotExist:
-                pass
-        if phone:
-            try:
-                return Member.objects.get(phone=phone)
-            except Member.DoesNotExist:
-                pass
-        return None
 
-    def _login_response(self, user, message):
-        """Helper to generate login response"""
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'message': message,
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'name': user.first_name,
-                'phone_verified': True,
-            }
-        }, status=status.HTTP_200_OK)
-
-
-# ==================== RESEND OTP VIEW ====================
 class ResendOTPView(APIView):
-    """
-    Resend OTP to user's email/phone
-    """
-    permission_classes = [permissions.AllowAny]
-
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         try:
             email = request.data.get('email')
-            phone = request.data.get('phone')
-
-            member = self._get_member(email, phone)
-            if not member:
+            
+            if not email:
+                return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
                 return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-            profile = UserProfile.objects.get(member=member)
-
+            
+            profile = UserProfile.objects.get(user=user)
+            
             if profile.phone_verified:
                 return Response({'error': 'Already verified'}, status=status.HTTP_400_BAD_REQUEST)
-
-            new_otp = generate_otp()
-            success, method = send_otp(member.phone, member.email, new_otp, member.name)
-
-            profile.otp_code = new_otp
+            
+            otp = generate_otp()
+            profile.otp_code = otp
             profile.otp_created_at = timezone.now()
             profile.otp_attempts = 0
             profile.save()
-
+            
+            try:
+                success, method = send_otp(profile.member.phone, email, otp, profile.member.name)
+                print(f"📧 New OTP sent via {method}: {success}")
+            except Exception as e:
+                print(f"⚠️ Email error: {e}")
+            
             return Response({
-                'message': 'New OTP sent!',
-                'otp_sent': success,
-                'method_used': method,
-                'debug_otp': new_otp,
+                'message': 'OTP resent! Check your email.',
+                'debug_otp': otp,
             }, status=status.HTTP_200_OK)
-
+            
         except Exception as e:
-            traceback.print_exc()
+            print("❌ Resend Error:", str(e))
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _get_member(self, email, phone):
-        """Helper to find member by email or phone"""
-        if email:
-            try:
-                return Member.objects.get(email=email)
-            except Member.DoesNotExist:
-                pass
-        if phone:
-            try:
-                return Member.objects.get(phone=phone)
-            except Member.DoesNotExist:
-                pass
-        return None
 
-
-# ==================== PROFILE VIEW ====================
-class ProfileView(generics.RetrieveUpdateAPIView):
-    """
-    Get and update user profile
-    """
-    serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        """Get or create profile for current user"""
-        profile, _ = UserProfile.objects.get_or_create(
-            user=self.request.user,
-            defaults={'phone_verified': True}
-        )
-        self._ensure_member(profile)
-        return profile
-
-    def _ensure_member(self, profile):
-        """Ensure member exists for profile"""
-        if not hasattr(profile, 'member'):
-            member = Member.objects.create(
-                user=profile.user,
-                name=profile.user.get_full_name() or profile.user.username,
-                email=profile.user.email,
-                phone='',
-                is_active=True
-            )
-            profile.member = member
-            profile.save()
-        return profile.member
-
-    def retrieve(self, request, *args, **kwargs):
-        """Get profile with additional member data"""
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
         try:
-            profile = self.get_object()
+            profile = UserProfile.objects.get(user=request.user)
             member = profile.member
             
             return Response({
@@ -255,19 +247,28 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def update(self, request, *args, **kwargs):
-        """Update profile with file upload support"""
+    
+    def patch(self, request):
         try:
-            profile = self.get_object()
+            profile = UserProfile.objects.get(user=request.user)
             member = profile.member
-
-            # Handle file upload
+            
+            # Handle profile picture upload
             if request.FILES and 'profile_pic' in request.FILES:
-                member.profile_pic = request.FILES['profile_pic']
+                print("📸 Uploading profile picture")
+                file = request.FILES['profile_pic']
+                
+                # Delete old picture if exists
+                if member.profile_pic:
+                    old_path = member.profile_pic.path
+                    if os.path.isfile(old_path):
+                        os.remove(old_path)
+                
+                member.profile_pic = file
                 member.save()
-                return self.retrieve(request)
-
+                print("✅ Profile picture updated")
+                return self.get(request)
+            
             # Handle text fields
             data = request.data
             if 'name' in data:
@@ -276,62 +277,48 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                 member.phone = data['phone']
             if 'email' in data:
                 member.email = data['email']
-                if data['email']:
-                    profile.user.email = data['email']
-                    profile.user.save()
+                profile.user.email = data['email']
+                profile.user.save()
             if 'address' in data:
                 member.address = data['address']
-
+            
             member.save()
             profile.save()
-            return self.retrieve(request)
-
+            
+            return self.get(request)
+            
         except Exception as e:
+            print(f"❌ Profile update error: {e}")
+            import traceback
+            traceback.print_exc()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ==================== LOGIN VIEW ====================
 class LoginView(APIView):
-    """
-    Login user and return JWT tokens
-    """
-    permission_classes = [permissions.AllowAny]
-
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         try:
             username = request.data.get('username')
             password = request.data.get('password')
-
+            
             if not username or not password:
-                return Response({
-                    'error': 'Username and password are required'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
+                return Response({'error': 'Username and password required'}, status=status.HTTP_400_BAD_REQUEST)
+            
             user = authenticate(username=username, password=password)
             if not user:
                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-            profile, _ = UserProfile.objects.get_or_create(
-                user=user,
-                defaults={'phone_verified': True}
-            )
-
-            if not hasattr(profile, 'member'):
-                Member.objects.create(
-                    user=user,
-                    name=user.get_full_name() or user.username,
-                    email=user.email,
-                    phone='',
-                    is_active=True
-                )
-
-            if not profile.phone_verified:
-                return Response({
-                    'error': 'Please verify your email before logging in.',
-                    'email_verified': False,
-                    'email': user.email,
-                }, status=status.HTTP_403_FORBIDDEN)
-
+            
+            try:
+                profile = UserProfile.objects.get(user=user)
+                if not profile.phone_verified:
+                    return Response({
+                        'error': 'Please verify your email before logging in.',
+                        'email_verified': False,
+                    }, status=status.HTTP_403_FORBIDDEN)
+            except UserProfile.DoesNotExist:
+                profile = UserProfile.objects.create(user=user, phone_verified=True)
+            
             refresh = RefreshToken.for_user(user)
             return Response({
                 'access': str(refresh.access_token),
@@ -344,7 +331,7 @@ class LoginView(APIView):
                     'phone_verified': profile.phone_verified,
                 }
             }, status=status.HTTP_200_OK)
-
+            
         except Exception as e:
-            traceback.print_exc()
+            print("❌ Login Error:", str(e))
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

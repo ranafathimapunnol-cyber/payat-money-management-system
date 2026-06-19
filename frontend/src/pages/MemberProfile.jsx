@@ -183,7 +183,7 @@ const MemberProfile = () => {
         const p = parseFloat(formData.payat) || 0;
         const k = parseFloat(formData.kittuvan) || 0;
         const i = parseFloat(formData.ippol_payattiyath) || 0;
-        
+
         if (p === 0 && k === 0 && i === 0) {
             toast.error('Please enter at least one amount');
             return;
@@ -192,7 +192,6 @@ const MemberProfile = () => {
         const { kodukkan, bakki_kittan } = calculateValues(p, k, i);
 
         try {
-            // Build payload with all required fields
             const payload = {
                 member: parseInt(id),
                 type: p > 0 ? 'received' : 'given',
@@ -204,7 +203,7 @@ const MemberProfile = () => {
                 kodukkan: kodukkan,
                 bakki_kittan: bakki_kittan,
                 note: '',
-                amount: parseFloat(p) || 0, // Always include amount
+                amount: parseFloat(p) || 0,
             };
 
             console.log('📤 Saving transaction payload:', payload);
@@ -219,16 +218,14 @@ const MemberProfile = () => {
             }
 
             console.log('✅ Transaction response:', response.data);
-            
+
             setIsEditing(false);
             await loadData();
-            
         } catch (error) {
             console.error('❌ Error saving transaction:', error);
             console.error('Error response:', error.response);
             console.error('Error data:', error.response?.data);
-            
-            // Show detailed error message from backend
+
             if (error.response?.data) {
                 const errorData = error.response.data;
                 if (typeof errorData === 'object') {
@@ -550,7 +547,7 @@ const MemberProfile = () => {
                         </div>
                     </div>
 
-                    {/* Ledger Section */}
+                    {/* Ledger Section - REARRANGED COLUMNS */}
                     <div className="p-4 sm:p-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                             <div className="flex items-center gap-3">
@@ -604,22 +601,28 @@ const MemberProfile = () => {
                             </div>
                         </div>
 
+                        {/* REARRANGED TABLE: Kittuvan first, Payat second */}
                         <div className="overflow-x-auto rounded-xl border border-slate-200/60">
                             <table className="w-full min-w-[600px]">
                                 <thead>
                                     <tr className="bg-slate-50/80 border-b border-slate-200">
-                                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                            PAYATT
-                                        </th>
+                                        {/* Column 1: MUMB KITTUVAAN (Now first) */}
                                         <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                                             MUMB KITTUVAAN
                                         </th>
+                                        {/* Column 2: PAYATT (Now second) */}
+                                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                            PAYATT
+                                        </th>
+                                        {/* Column 3: KODUKKAAN */}
                                         <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                                             KODUKKAAN
                                         </th>
+                                        {/* Column 4: IPPOL */}
                                         <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                                             IPPOL
                                         </th>
+                                        {/* Column 5: BAKKI KITTAAN */}
                                         <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                                             BAKKI KITTAAN
                                         </th>
@@ -630,6 +633,32 @@ const MemberProfile = () => {
                                         className={
                                             isEditing ? 'bg-indigo-50/20' : 'hover:bg-slate-50/50 transition-colors'
                                         }>
+                                        {/* Column 1: MUMB KITTUVAAN (Now first) */}
+                                        <td className="px-3 sm:px-4 py-3 border-b border-slate-100">
+                                            {isEditing ? (
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] text-slate-500 font-medium block">
+                                                        Amount
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        value={formData.kittuvan}
+                                                        onChange={(e) =>
+                                                            setFormData({ ...formData, kittuvan: e.target.value })
+                                                        }
+                                                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs sm:text-sm"
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span
+                                                    className={`text-sm sm:text-base font-semibold ${k > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
+                                                    {k > 0 ? `₹${k.toFixed(0)}` : '—'}
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        {/* Column 2: PAYATT (Now second) */}
                                         <td className="px-3 sm:px-4 py-3 border-b border-slate-100">
                                             {isEditing ? (
                                                 <div className="space-y-1.5">
@@ -672,35 +701,16 @@ const MemberProfile = () => {
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-3 sm:px-4 py-3 border-b border-slate-100">
-                                            {isEditing ? (
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] text-slate-500 font-medium block">
-                                                        Amount
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        value={formData.kittuvan}
-                                                        onChange={(e) =>
-                                                            setFormData({ ...formData, kittuvan: e.target.value })
-                                                        }
-                                                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs sm:text-sm"
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <span
-                                                    className={`text-sm sm:text-base font-semibold ${k > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
-                                                    {k > 0 ? `₹${k.toFixed(0)}` : '—'}
-                                                </span>
-                                            )}
-                                        </td>
+
+                                        {/* Column 3: KODUKKAAN */}
                                         <td className="px-3 sm:px-4 py-3 border-b border-slate-100">
                                             <span
                                                 className={`text-sm sm:text-base font-semibold ${kodukkan > 0 ? 'text-amber-600' : 'text-slate-300'}`}>
                                                 {kodukkan > 0 ? `₹${kodukkan.toFixed(0)}` : '—'}
                                             </span>
                                         </td>
+
+                                        {/* Column 4: IPPOL */}
                                         <td className="px-3 sm:px-4 py-3 border-b border-slate-100">
                                             {isEditing ? (
                                                 <div className="space-y-1.5">
@@ -743,6 +753,8 @@ const MemberProfile = () => {
                                                 </div>
                                             )}
                                         </td>
+
+                                        {/* Column 5: BAKKI KITTAAN */}
                                         <td className="px-3 sm:px-4 py-3 border-b border-slate-100">
                                             <div
                                                 className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold ${bakki_kittan >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
@@ -756,17 +768,17 @@ const MemberProfile = () => {
 
                         {transaction && (
                             <div className="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-                                <div className="bg-emerald-50/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-center border border-emerald-200/50">
-                                    <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">
-                                        PAYATT
-                                    </p>
-                                    <p className="text-sm sm:text-base font-bold text-emerald-700">₹{p.toFixed(0)}</p>
-                                </div>
                                 <div className="bg-rose-50/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-center border border-rose-200/50">
                                     <p className="text-[10px] text-rose-600 font-semibold uppercase tracking-wider">
                                         MUMB KITTUVAAN
                                     </p>
                                     <p className="text-sm sm:text-base font-bold text-rose-700">₹{k.toFixed(0)}</p>
+                                </div>
+                                <div className="bg-emerald-50/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-center border border-emerald-200/50">
+                                    <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">
+                                        PAYATT
+                                    </p>
+                                    <p className="text-sm sm:text-base font-bold text-emerald-700">₹{p.toFixed(0)}</p>
                                 </div>
                                 <div className="bg-amber-50/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-center border border-amber-200/50">
                                     <p className="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">
@@ -797,8 +809,7 @@ const MemberProfile = () => {
                                 <p className="text-sm text-slate-500">No transactions recorded yet</p>
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="mt-2 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
-                                >
+                                    className="mt-2 text-indigo-600 hover:text-indigo-700 text-sm font-medium">
                                     + Add your first transaction
                                 </button>
                             </div>

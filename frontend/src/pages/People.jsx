@@ -258,8 +258,8 @@ const People = () => {
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                             {filteredPeople.map((person) => {
-                                const profilePic = person.profile_pic_url
-                                    ? `http://localhost:8000${person.profile_pic_url}`
+                                const profilePic = person.profile_pic
+                                    ? `http://localhost:8000${person.profile_pic}`
                                     : null;
                                 const status = getStatusBadge(person);
                                 const statusColor = getStatusColor(person);
@@ -378,8 +378,8 @@ const People = () => {
                     ) : (
                         <div className="divide-y divide-gray-100">
                             {deletedPeople.map((person) => {
-                                const profilePic = person.profile_pic_url
-                                    ? `http://localhost:8000${person.profile_pic_url}`
+                                const profilePic = person.profile_pic
+                                    ? `http://localhost:8000${person.profile_pic}`
                                     : null;
 
                                 return (

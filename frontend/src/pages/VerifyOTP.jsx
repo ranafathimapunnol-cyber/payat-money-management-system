@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const VerifyOTP = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login, user } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,6 +49,13 @@ const VerifyOTP = () => {
 
     return () => clearInterval(timerInterval);
   }, []);
+
+  // ✅ If user is already logged in, redirect to home
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleChange = (index, value) => {
     if (value.length > 1) return;
@@ -92,23 +101,43 @@ const VerifyOTP = () => {
 
     setLoading(true);
     try {
+      console.log('📤 Verifying OTP for:', email);
+      
       const response = await api.post('/auth/verify-otp/', {
         email: email,
         otp: otpCode,
       });
 
+      console.log('✅ Verification response:', response.data);
+
       if (response.data.access) {
+        // ✅ Store tokens
         localStorage.setItem('accessToken', response.data.access);
         localStorage.setItem('refreshToken', response.data.refresh);
         
+        // ✅ Set authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+        
+        // ✅ Store user data
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+        
         toast.success('Email verified successfully! 🎉');
         sessionStorage.removeItem('registration_email');
+        
+        // ✅ Navigate to home page
         navigate('/');
+        
+        // ✅ Reload page to refresh auth state
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       } else {
         toast.error('Verification failed. Please try again.');
       }
     } catch (error) {
-      console.error('Verification error:', error);
+      console.error('❌ Verification error:', error);
       const errorMessage = error.response?.data?.error || 'Invalid OTP. Please try again.';
       toast.error(errorMessage);
     } finally {
@@ -125,6 +154,8 @@ const VerifyOTP = () => {
         email: email,
       });
       
+      console.log('📤 Resend response:', response.data);
+      
       toast.success('New OTP sent to your email!');
       
       setTimer(60);
@@ -134,7 +165,7 @@ const VerifyOTP = () => {
         inputRefs.current[0].focus();
       }
     } catch (error) {
-      console.error('Resend error:', error);
+      console.error('❌ Resend error:', error);
       toast.error('Failed to resend OTP. Please try again.');
     } finally {
       setResendLoading(false);

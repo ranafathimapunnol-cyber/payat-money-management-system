@@ -21,13 +21,13 @@ class Member(models.Model):
     email = models.EmailField(null=True, blank=True)
     address = models.TextField(null=True, blank=True)
     profile_pic = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
-    is_active = models.BooleanField(default=True)  # For deceased
+    is_active = models.BooleanField(default=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     joined_date = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(null=True, blank=True)
     deceased_date = models.DateField(null=True, blank=True)
     closed_date = models.DateField(null=True, blank=True)
-    is_deleted = models.BooleanField(default=False)  # For soft delete
+    is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     phone_verified = models.BooleanField(default=False)
 

@@ -1,375 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PAYAT - Verification Code</title>
     <style>
-        /* Reset styles */
-        * {
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
         .container {
-            max-width: 580px;
-            width: 100%;
-            margin: 0 auto;
+            max-width: 600px;
+            margin: 20px auto;
             background: #ffffff;
-            border-radius: 24px;
-            padding: 48px 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            position: relative;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             overflow: hidden;
         }
-
-        /* Decorative top bar */
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        }
-
-        /* Header */
         .header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            padding: 30px;
             text-align: center;
-            margin-bottom: 32px;
         }
-
-        .logo-container {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 12px 24px;
-            margin-bottom: 16px;
-        }
-
-        .logo {
-            font-size: 28px;
-            font-weight: 800;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-        }
-
-        .logo span {
-            font-weight: 300;
-        }
-
         .header h1 {
-            font-size: 26px;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 8px;
+            color: white;
+            margin: 0;
+            font-size: 28px;
         }
-
         .header p {
-            color: #718096;
-            font-size: 16px;
+            color: #e0e7ff;
+            margin: 5px 0 0;
         }
-
-        /* User greeting */
-        .greeting {
-            background: #f7fafc;
-            border-radius: 12px;
-            padding: 20px 24px;
-            margin-bottom: 24px;
+        .content {
+            padding: 30px;
         }
-
-        .greeting h2 {
-            font-size: 18px;
-            color: #2d3748;
-            font-weight: 600;
-        }
-
-        .greeting p {
-            color: #4a5568;
-            font-size: 15px;
-            margin-top: 4px;
-        }
-
-        /* OTP Section */
-        .otp-section {
-            text-align: center;
-            padding: 32px 0;
-            position: relative;
-        }
-
-        .otp-label {
-            font-size: 14px;
-            color: #718096;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 12px;
-        }
-
-        .otp-code-container {
-            display: inline-flex;
-            gap: 12px;
-            justify-content: center;
+        .otp-box {
+            background: #f3f4f6;
             padding: 20px;
-        }
-
-        .otp-digit {
-            width: 60px;
-            height: 72px;
-            background: #f7fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            font-weight: 700;
-            color: #2d3748;
-            letter-spacing: 4px;
-        }
-
-        .otp-digit:last-child {
-            border-color: #667eea;
-            background: #ebf4ff;
-        }
-
-        .otp-code {
-            font-size: 48px;
-            font-weight: 800;
-            color: #1a202c;
-            letter-spacing: 12px;
-            background: #f7fafc;
-            padding: 16px 24px;
-            border-radius: 16px;
-            display: inline-block;
-            border: 2px dashed #e2e8f0;
-        }
-
-        /* Status badges */
-        .badge-container {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin: 16px 0 20px 0;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .badge-time {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .badge-secure {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .badge-icon {
-            font-size: 16px;
-        }
-
-        /* Divider */
-        .divider {
-            border: none;
-            border-top: 2px solid #edf2f7;
-            margin: 24px 0;
-        }
-
-        /* Info section */
-        .info-section {
-            background: #f7fafc;
-            border-radius: 12px;
-            padding: 20px 24px;
-            margin: 24px 0 0 0;
-        }
-
-        .info-section h3 {
-            font-size: 14px;
-            color: #2d3748;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .info-section p {
-            color: #718096;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .info-section ul {
-            list-style: none;
-            padding: 0;
-            margin: 8px 0 0 0;
-        }
-
-        .info-section ul li {
-            color: #4a5568;
-            font-size: 14px;
-            padding: 4px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .info-section ul li::before {
-            content: '•';
-            color: #667eea;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        /* Footer */
-        .footer {
+            border-radius: 8px;
             text-align: center;
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 2px solid #edf2f7;
+            margin: 20px 0;
         }
-
-        .footer p {
-            color: #a0aec0;
-            font-size: 13px;
-            line-height: 1.6;
+        .otp-code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #6366f1;
+            letter-spacing: 8px;
         }
-
-        .footer .brand {
-            color: #667eea;
-            font-weight: 600;
+        .footer {
+            background: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
         }
-
-        .footer .small {
-            font-size: 12px;
-            color: #cbd5e0;
-        }
-
-        /* Responsive design */
-        @media (max-width: 480px) {
-            .container {
-                padding: 24px 16px;
-            }
-
-            .header h1 {
-                font-size: 22px;
-            }
-
-            .otp-code {
-                font-size: 36px;
-                letter-spacing: 8px;
-                padding: 12px 16px;
-            }
-
-            .otp-digit {
-                width: 48px;
-                height: 60px;
-                font-size: 28px;
-            }
-
-            .badge-container {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .logo {
-                font-size: 22px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .otp-code {
-                font-size: 28px;
-                letter-spacing: 4px;
-            }
-
-            .otp-digit {
-                width: 40px;
-                height: 52px;
-                font-size: 24px;
-            }
+        .note {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
-            <div class="logo-container">
-                <div class="logo">PAYAT</div>
-            </div>
-            <h1>🔐 Verification Code</h1>
-            <p>Secure your account with one-time verification</p>
+            <h1>🔐 PAYAT</h1>
+            <p>Community Ledger System</p>
         </div>
-
-        <!-- Greeting -->
-        <div class="greeting">
-            <h2>👋 Hello {{ name }}!</h2>
-            <p>Use the code below to verify your PAYAT account</p>
-        </div>
-
-        <!-- OTP Code -->
-        <div class="otp-section">
-            <div class="otp-label">Your 6-digit verification code</div>
-            <div class="otp-code">{{ otp }}</div>
+        <div class="content">
+            <h2>Hello {{ name }}! 👋</h2>
+            <p>Thank you for registering with PAYAT. Please use the following OTP to verify your email:</p>
             
-            <!-- Badges -->
-            <div class="badge-container">
-                <span class="badge badge-time">
-                    <span class="badge-icon">⏱️</span>
-                    Expires in 5 minutes
-                </span>
-                <span class="badge badge-secure">
-                    <span class="badge-icon">🔒</span>
-                    Secure & Private
-                </span>
+            <div class="otp-box">
+                <div class="otp-code">{{ otp }}</div>
             </div>
+            
+            <p style="text-align: center;">This OTP is valid for <strong>5 minutes</strong>.</p>
+            
+            <p class="note">💡 If you didn't request this, please ignore this email.</p>
         </div>
-
-        <hr class="divider">
-
-        <!-- Info Section -->
-        <div class="info-section">
-            <h3>📋 Important Information</h3>
-            <ul>
-                <li>This code will expire in <strong>5 minutes</strong></li>
-                <li>Never share this code with anyone</li>
-                <li>If you didn't request this, please ignore this email</li>
-                <li>For security, do not reply to this email</li>
-            </ul>
-        </div>
-
-        <!-- Footer -->
         <div class="footer">
-            <p>
-                This is an automated message from <span class="brand">PAYAT</span>.<br>
-                Community Ledger Management System
-            </p>
-            <p class="small">
-                © 2026 PAYAT. All rights reserved.
-            </p>
+            <p>&copy; 2026 PAYAT. All rights reserved.</p>
+            <p style="font-size: 12px; color: #9ca3af;">This is an automated message, please do not reply.</p>
         </div>
     </div>
 </body>

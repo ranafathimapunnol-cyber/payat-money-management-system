@@ -49,9 +49,13 @@ export const AuthProvider = ({ children }) => {
       api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
       
       // Fetch full user profile
-      const profileResponse = await api.get('/auth/profile/');
-      console.log('✅ Profile response:', profileResponse.data);
-      setUser(profileResponse.data);
+      try {
+        const profileResponse = await api.get('/auth/profile/');
+        setUser(profileResponse.data);
+      } catch (profileError) {
+        // If profile fetch fails, use the user data from login
+        setUser(user);
+      }
       
       toast.success('Login successful!');
       return true;
@@ -79,6 +83,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
     toast.success('Logged out');
@@ -97,10 +102,15 @@ export const AuthProvider = ({ children }) => {
         api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
         
         // Fetch full profile
-        const profileResponse = await api.get('/auth/profile/');
-        setUser(profileResponse.data);
+        try {
+          const profileResponse = await api.get('/auth/profile/');
+          setUser(profileResponse.data);
+        } catch (profileError) {
+          setUser(user);
+        }
         
         toast.success('Email verified!');
+        return response.data;
       }
       return response.data;
     } catch (error) {
