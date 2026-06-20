@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,6 +17,12 @@ import {
   WalletIcon,
   CalculatorIcon,
   ArchiveBoxIcon,
+  CurrencyRupeeIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  HomeIcon,
+  BellIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { getDashboardData } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
@@ -51,45 +56,22 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // Get financial data
       const data = await getDashboardData();
       
-      // Get all members to count by status
       const membersRes = await api.get('/members/members/');
       const allMembers = membersRes.data || [];
       
-      // Get current user's member ID to filter out
       const currentUserId = user?.id || user?.member?.id;
-      
-      // Filter out current user from all members
       const otherMembers = allMembers.filter(m => m.id !== currentUserId);
       
-      // Count by status (excluding current user)
       const totalMembers = otherMembers.length;
-      
-      // Deceased members: status is 'deceased' or is_active is false
       const deceasedMembers = otherMembers.filter(m => 
         m.status === 'deceased' || m.is_active === false
       ).length;
-      
-      // Closed members: status is 'closed'
       const closedMembers = otherMembers.filter(m => 
         m.status === 'closed'
       ).length;
-      
-      // Active members = Total - Deceased - Closed
       const activeMembers = totalMembers - deceasedMembers - closedMembers;
-      
-      console.log('📊 Dashboard member counts:', {
-        totalMembers,
-        activeMembers,
-        deceasedMembers,
-        closedMembers,
-        calculation: `${totalMembers} - ${deceasedMembers} - ${closedMembers} = ${activeMembers}`,
-        allMembers: allMembers.length,
-        currentUserId,
-        otherMembers: otherMembers.length
-      });
       
       setDashboardData({
         ...data,
@@ -114,6 +96,10 @@ const Dashboard = () => {
     toast.success('Dashboard refreshed!');
   };
 
+  const navigateToPeople = (filter) => {
+    navigate('/people', { state: { filter } });
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -131,58 +117,50 @@ const Dashboard = () => {
     }).format(amount || 0);
   };
 
-  // Financial Summary Cards - Only Total Balance
-  const financialCards = [
-    {
-      id: 'balance',
-      title: 'Total Balance',
-      value: formatCurrency(dashboardData.totalBakki),
-      icon: WalletIcon,
-      color: 'from-indigo-500 to-purple-500',
-      bg: 'bg-indigo-50',
-      border: 'border-indigo-200',
-      text: 'text-indigo-600',
-      description: 'Net balance across all members',
-    },
-  ];
-
-  // Member stats with real counts (excluding current user)
   const memberStats = [
     {
       id: 'total',
       title: 'Total Members',
       value: dashboardData.totalMembers,
       icon: UsersIcon,
-      bg: 'bg-indigo-50',
-      border: 'border-indigo-200',
+      bg: 'from-indigo-500 to-purple-600',
+      lightBg: 'bg-indigo-50',
       text: 'text-indigo-600',
+      filter: 'all',
+      onClick: () => navigateToPeople('all'),
     },
     {
       id: 'active',
       title: 'Active Members',
       value: dashboardData.activeMembers,
       icon: UserGroupIcon,
-      bg: 'bg-emerald-50',
-      border: 'border-emerald-200',
+      bg: 'from-emerald-500 to-teal-600',
+      lightBg: 'bg-emerald-50',
       text: 'text-emerald-600',
+      filter: 'active',
+      onClick: () => navigateToPeople('active'),
     },
     {
       id: 'deceased',
       title: 'Deceased',
       value: dashboardData.deceasedMembers,
       icon: HeartIcon,
-      bg: 'bg-red-50',
-      border: 'border-red-200',
+      bg: 'from-red-500 to-pink-600',
+      lightBg: 'bg-red-50',
       text: 'text-red-600',
+      filter: 'deceased',
+      onClick: () => navigateToPeople('deceased'),
     },
     {
       id: 'closed',
-      title: 'Closed',
+      title: 'Closed Accounts',
       value: dashboardData.closedMembers,
       icon: ArchiveBoxIcon,
-      bg: 'bg-gray-50',
-      border: 'border-gray-200',
+      bg: 'from-gray-500 to-gray-600',
+      lightBg: 'bg-gray-50',
       text: 'text-gray-600',
+      filter: 'closed',
+      onClick: () => navigateToPeople('closed'),
     },
   ];
 
@@ -197,7 +175,7 @@ const Dashboard = () => {
       id: 'view-people',
       title: 'View All',
       icon: UserGroupIcon,
-      onClick: () => navigate('/people'),
+      onClick: () => navigateToPeople('all'),
     },
     {
       id: 'profile',
@@ -209,119 +187,83 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - Logo + Dashboard */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <ChartBarIcon className="h-7 w-7 text-indigo-500" />
-            Dashboard
-            <span className="text-sm font-normal text-gray-400 flex items-center gap-1.5">
-              <ClockIcon className="h-4 w-4" />
-              {lastUpdated.toLocaleTimeString()}
-            </span>
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Community & Financial Overview</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-black shadow-lg shadow-indigo-500/25">
+            <ChartBarIcon className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-500">Community & Financial Overview</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl transition-all duration-200 border border-gray-200 shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl transition-all duration-200 border border-gray-200 shadow-sm hover:shadow-md disabled:opacity-50"
           >
             <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
           <button
-            onClick={() => navigate('/people')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30"
+            onClick={() => navigateToPeople('all')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-500 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02]"
           >
             <EyeIcon className="h-4 w-4" />
-            View People
+            View All
           </button>
         </div>
       </div>
 
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gray-900 p-6 text-white shadow-xl shadow-purple-500/20">
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
+      {/* Balance Card - Dark Color */}
+      <div className="relative overflow-hidden rounded-2xl bg-gray-100 p-6 text-white shadow-2xl shadow-gray-900/30">
+        {/* Subtle Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gray-600 rounded-full blur-1xl"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gray-600 rounded-full blur-1xl"></div>
+        </div>
         
-        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
-              <SparklesIcon className="h-8 w-8" />
-            </div>
+        <div className="relative">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold">Welcome to PAYAT</h2>
-              <p className="text-indigo-100 text-sm">Community & Financial Overview</p>
+              <p className="text-sm font-medium text-gray-400">Total Balance</p>
+              <p className="text-3xl font-bold text-black mt-1">{formatCurrency(dashboardData.totalBakki)}</p>
+              <p className="text-xs text-gray-400 mt-1">Net balance across all members</p>
+            </div>
+            <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10">
+              <WalletIcon className="h-6 w-6 text-black" />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-xs text-indigo-200">Total Balance</p>
-              <p className="text-xl font-bold">{formatCurrency(dashboardData.totalBakki)}</p>
-            </div>
-            <div className="w-px h-10 bg-white/30"></div>
-            <div className="text-right">
-              <p className="text-xs text-indigo-200">Members</p>
-              <p className="text-xl font-bold">{dashboardData.totalMembers}</p>
-            </div>
-            <div className="w-px h-10 bg-white/30"></div>
-            <div className="text-right">
-              <p className="text-xs text-indigo-200">Active</p>
-              <p className="text-xl font-bold">{dashboardData.activeMembers}</p>
-            </div>
-          </div>
+          
+          
         </div>
       </div>
 
-      {/* Financial Summary - Only 1 Card (Total Balance) */}
-      <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
-        {financialCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.id}
-              className={`${card.bg} border ${card.border} rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{card.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{card.description}</p>
-                </div>
-                <div className={`p-2.5 rounded-xl bg-white/80 border ${card.border}`}>
-                  <Icon className={`h-5 w-5 ${card.text}`} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Member Stats - 4 Cards (Total, Active, Deceased, Closed) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Member Stats - Clean Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {memberStats.map((stat) => {
           const Icon = stat.icon;
           return (
             <div
               key={stat.id}
-              className={`${stat.bg} border ${stat.border} rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer`}
-              onClick={() => {
-                if (stat.id === 'total' || stat.id === 'active') {
-                  navigate('/people');
-                }
-              }}
+              className={`${stat.lightBg} rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-[1.02] border border-transparent hover:border-white`}
+              onClick={stat.onClick}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{stat.title}</p>
-                  <p className="text-xl font-bold text-gray-900 mt-0.5">{stat.value}</p>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
                 </div>
-                <div className={`p-2 rounded-xl bg-white/80 border ${stat.border}`}>
-                  <Icon className={`h-4 w-4 ${stat.text}`} />
+                <div className={`p-2 rounded-xl bg-white/80 border border-gray-100`}>
+                  <Icon className={`h-5 w-5 ${stat.text}`} />
                 </div>
+              </div>
+              <div className="mt-3 flex items-center justify-end">
+                <span className="text-[10px] text-gray-400 hover:text-indigo-600 transition-colors flex items-center gap-1">
+                  View →
+                </span>
               </div>
             </div>
           );
@@ -329,15 +271,20 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <PlusCircleIcon className="h-4 w-4 text-indigo-500" />
-            Quick Actions
-          </h3>
-          <span className="text-xs text-gray-400">Manage your community</span>
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg shadow-indigo-500/25">
+              <PlusCircleIcon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">Quick Actions</h3>
+              <p className="text-xs text-gray-400">Manage your community</p>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        
+        <div className="grid grid-cols-3 gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
@@ -359,9 +306,22 @@ const Dashboard = () => {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
-        <span>All amounts in ₹ (Indian Rupees)</span>
-        <span>Updated: {lastUpdated.toLocaleString()}</span>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400 border-t border-gray-100 pt-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <CurrencyRupeeIcon className="h-3 w-3" />
+            All amounts in INR
+          </span>
+          <span className="w-px h-4 bg-gray-200"></span>
+          <span className="flex items-center gap-1.5">
+            <ClockIcon className="h-3 w-3" />
+            Updated: {lastUpdated.toLocaleString()}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Live</span>
+        </div>
       </div>
     </div>
   );

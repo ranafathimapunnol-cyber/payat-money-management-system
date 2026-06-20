@@ -7,7 +7,7 @@ import VerifyOTP from './pages/VerifyOTP';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import Members from './pages/Members';
+import People from './pages/People'; // Changed from Members to People
 import MemberProfile from './pages/MemberProfile';
 import AddPerson from './pages/AddPerson';
 import AddTransaction from './pages/AddTransaction';
@@ -54,7 +54,8 @@ function App() {
             <Route index element={<Home />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
-            <Route path="people" element={<Members />} />
+            <Route path="people" element={<People />} />
+            <Route path="members" element={<Navigate to="/people" replace />} /> {/* Redirect old /members to /people */}
             <Route path="profile/:id" element={<MemberProfile />} />
             <Route path="person/add" element={<AddPerson />} />
             <Route path="transaction/add" element={<AddTransaction />} />
